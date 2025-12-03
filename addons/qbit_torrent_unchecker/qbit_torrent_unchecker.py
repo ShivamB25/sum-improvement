@@ -17,8 +17,40 @@ sys.path.append(MAIN_SCRIPT_DIR)
 
 log_file_name = "qbit_torrent_unchecker_log"
 
-# Import everything from the script in that directory
-from komga_cover_extractor import *
+import cProfile  # noqa: E402
+from komga_cover_extractor import (  # noqa: E402
+    cache_existing_library_paths,
+    cached_paths,
+    check_for_existing_series,
+    download_folders,
+    download_folders_with_types,
+    get_extensionless_name,
+    get_lines_from_file,
+    is_same_index_number,
+    is_upgradeable,
+    paths,
+    paths_with_types,
+    process_path,
+    upgrade_to_file_class,
+    upgrade_to_volume_class,
+    write_to_file,
+)
+from settings import (  # noqa: E402
+    cache_each_root_for_each_path_in_paths_at_beginning_toggle,
+    cached_paths_path,
+    check_for_existing_series_toggle,
+    convertable_file_extensions,
+    delete_unacceptable_files_toggle,
+    delete_unacceptable_torrent_titles_in_qbit,
+    file_extensions,
+    qbittorrent_ip,
+    qbittorrent_password,
+    qbittorrent_port,
+    qbittorrent_target_category,
+    qbittorrent_username,
+    unacceptable_keywords,
+    uncheck_non_qbit_upgrades_toggle,
+)
 
 # state filter
 target_states = ["pausedDL", "stoppedDL"]
@@ -380,7 +412,7 @@ def check_files(torrent, files, qb):
             uncheck_files(torrent, excluded_file, qb)
 
     print(
-        f"\n\tOrganizing {len(files)-len(files_to_exclude)} file names into volumes..."
+        f"\n\tOrganizing {len(files) - len(files_to_exclude)} file names into volumes..."
     )
     file_names = process_file_names(files, files_to_exclude)
     volumes = organize_files(torrent, file_names)

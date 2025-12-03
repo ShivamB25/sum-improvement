@@ -4,7 +4,6 @@ import hashlib
 import io
 import os
 from pathlib import Path
-import re
 import shutil
 import string
 import struct
@@ -64,7 +63,54 @@ from src.models import (
 
 # Get all the variables in settings.py
 import settings as settings_file
-from settings import *
+from settings import (
+    add_issue_number_to_manga_file_name,
+    add_publisher_name_to_file_name_when_renaming,
+    add_volume_one_number_to_one_shots,
+    auto_classify_watchdog_paths,
+    cache_each_root_for_each_path_in_paths_at_beginning_toggle,
+    chapter_support_toggle,
+    check_for_duplicate_volumes_toggle,
+    check_for_existing_series_toggle,
+    check_for_missing_volumes_toggle,
+    compare_detected_cover_to_blank_images,
+    convert_to_cbz_toggle,
+    correct_file_extensions_toggle,
+    create_folders_for_items_in_download_folder_toggle,
+    delete_chapters_from_downloads_toggle,
+    delete_unacceptable_files_toggle,
+    exception_keywords,
+    extract_chapter_covers,
+    extract_covers_toggle,
+    generate_release_group_list_toggle,
+    ignored_folder_names,
+    Keyword,
+    komga_ip,
+    komga_login_email,
+    komga_login_password,
+    komga_port,
+    log_to_file,
+    manual_rename,
+    match_through_identifiers,
+    move_lone_files_to_similar_folder,
+    move_release_group_to_end_of_file_name,
+    mute_discord_rename_notifications,
+    output_chapter_covers_to_discord,
+    preferred_chapter_renaming_format,
+    preferred_volume_renaming_format,
+    ranked_keywords,
+    rename_chapters_with_preferred_chapter_keyword,
+    rename_dirs_in_download_folder_toggle,
+    rename_files_in_download_folders_toggle,
+    rename_zip_to_cbz,
+    replace_series_name_in_file_name_with_similar_folder_name,
+    replace_unicode_when_restructuring,
+    resturcture_when_renaming,
+    search_and_add_premium_to_file_name,
+    send_scan_request_to_komga_libraries_toggle,
+    unacceptable_keywords,
+    use_latest_volume_cover_as_series_cover,
+)
 
 # Version of the script
 script_version = (2, 5, 37)
@@ -1124,7 +1170,11 @@ def process_path(path, paths_with_types, paths, is_download_folders=False):
 
     # Determines what type of path it is, and assigns it to the appropriate list
     def process_single_type_path(path_to_process):
-        nonlocal path_formats, path_extensions, path_library_types, path_translation_source_types
+        nonlocal \
+            path_formats, \
+            path_extensions, \
+            path_library_types, \
+            path_translation_source_types
         if path_to_process.split(",")[0].strip() in file_formats:
             path_formats = [
                 path_type.strip() for path_type in path_to_process.split(",")
@@ -2824,7 +2874,7 @@ def get_min_and_max_numbers(string):
 def contains_non_numeric(input_string):
     try:
         # Try converting the string to a float
-        float_value = float(input_string)
+        float(input_string)
 
         # If successful, return False
         return False
@@ -2850,7 +2900,6 @@ volume_number_search_pattern = re.compile(
 # Finds the volume/chapter number(s) in the file name.
 @lru_cache(maxsize=3500)
 def get_release_number(file, chapter=False):
-
     # Cleans up the chapter's series name
     def clean_series_name(name):
         # Removes starting period
@@ -4158,7 +4207,6 @@ def check_for_missing_volumes():
 
         for folder in folders:
             root = folder["root"]
-            dirs = folder["dirs"]
             files = folder["files"]
 
             # Clean and sort the existing directory.
@@ -4241,13 +4289,14 @@ def check_for_missing_volumes():
 # Renames the file.
 def rename_file(src, dest, silent=False):
     result = False
+    error_msg = None
     if os.path.isfile(src):
-        root = os.path.dirname(src)
         if not silent:
             print(f"\n\t\tRenaming {src}")
         try:
             os.rename(src, dest)
         except Exception as e:
+            error_msg = str(e)
             send_message(
                 f"Failed to rename {os.path.basename(src)} to {os.path.basename(dest)}\n\tERROR: {e}",
                 error=True,
@@ -4273,7 +4322,7 @@ def rename_file(src, dest, silent=False):
                             send_message(str(e), error=True)
         else:
             send_message(
-                f"Failed to rename {src} to {dest}\n\tERROR: {e}",
+                f"Failed to rename {src} to {dest}\n\tERROR: {error_msg or 'Unknown'}",
                 error=True,
             )
     else:
@@ -4284,11 +4333,13 @@ def rename_file(src, dest, silent=False):
 # Renames the folder
 def rename_folder(src, dest):
     result = None
+    error_msg = None
     if os.path.isdir(src):
         if not os.path.isdir(dest):
             try:
                 os.rename(src, dest)
             except Exception as e:
+                error_msg = str(e)
                 send_message(str(e), error=True)
             if os.path.isdir(dest):
                 send_message(
@@ -4298,7 +4349,7 @@ def rename_folder(src, dest):
                 result = dest
             else:
                 send_message(
-                    f"Failed to rename {src} to {dest}\n\tERROR: {e}",
+                    f"Failed to rename {src} to {dest}\n\tERROR: {error_msg or 'Unknown'}",
                     error=True,
                 )
         else:
@@ -4435,7 +4486,9 @@ def reorganize_and_rename(files, dir):
         ext: (
             "[%s]"
             if ext in novel_extensions
-            else "(%s)" if ext in manga_extensions else ""
+            else "(%s)"
+            if ext in manga_extensions
+            else ""
         )
         for ext in file_extensions
     }
@@ -5718,9 +5771,7 @@ def check_for_duplicate_volumes(paths_to_search=[]):
                                                 if main_file_upgrade_status.is_upgrade:
                                                     duplicate_file = compare_file
                                                     upgrade_file = file
-                                                elif (
-                                                    compare_file_upgrade_status.is_upgrade
-                                                ):
+                                                elif compare_file_upgrade_status.is_upgrade:
                                                     duplicate_file = file
                                                     upgrade_file = compare_file
                                                 send_message(
@@ -5944,7 +5995,7 @@ def parse_words(user_string):
             words_no_uni = (
                 unidecode(words_lower) if contains_unicode(words_lower) else words_lower
             )
-            words_no_uni_split = words_lower.split()
+            words_no_uni_split = words_no_uni.split()
             if words_no_uni_split:
                 words = words_no_uni_split
         except Exception as e:
@@ -5969,9 +6020,9 @@ def find_consecutive_items(arr1, arr2, count=3):
 def count_words(strings_list):
     word_count = {}
 
-    for string in strings_list:
+    for s in strings_list:
         # Remove punctuation and convert to lowercase
-        words = parse_words(string)
+        words = parse_words(s)
 
         # Count the occurrence of each word
         for word in words:
@@ -6040,7 +6091,11 @@ def check_for_existing_series(
     test_paths_with_types=paths_with_types,
     test_cached_paths=cached_paths,
 ):
-    global cached_paths, cached_identifier_results, messages_to_send, grouped_notifications
+    global \
+        cached_paths, \
+        cached_identifier_results, \
+        messages_to_send, \
+        grouped_notifications
 
     # Groups messages by their series
     def group_similar_series(messages_to_send):
@@ -6958,7 +7013,6 @@ def check_for_existing_series(
                         group_numbers.append(item.number)
 
                 abbreviated_numbers_str = abbreviate_numbers(group_numbers)
-                volume_numbers_mts = []
                 volume_names_mts = []
                 first_item = group_messages[0]
                 title = first_item.fields[0]["name"]
@@ -7212,7 +7266,9 @@ def rename_dirs_in_download_folder(paths_to_process=download_folders):
                     )  # A- -> A
                 if ":" in folder_name:
                     folder_name = re.sub(
-                        r"([A-Za-z])(\:)", r"\1 -", folder_name  # A: -> A -
+                        r"([A-Za-z])(\:)",
+                        r"\1 -",
+                        folder_name,  # A: -> A -
                     )
                 if "?" in folder_name:
                     folder_name = folder_name.replace("?", "")  # remove question marks
@@ -7483,7 +7539,9 @@ def get_extras(file_name, chapter=False, series_name="", subtitle="", extension=
         ext: (
             "[%s]"
             if ext in novel_extensions
-            else "(%s)" if ext in manga_extensions else ""
+            else "(%s)"
+            if ext in manga_extensions
+            else ""
         )
         for ext in file_extensions
     }
@@ -7520,7 +7578,7 @@ def get_extras(file_name, chapter=False, series_name="", subtitle="", extension=
 # Check if the input value can be converted to a float
 def isfloat(x):
     try:
-        a = float(x)
+        float(x)
     except (TypeError, ValueError):
         return False
     else:
@@ -7935,7 +7993,7 @@ def rename_files(
                             if r:
                                 r = r.strip()
 
-                            if r == "" or r == "." or r == None:
+                            if r == "" or r == "." or r is None:
                                 results.remove(r)
                             else:
                                 found = re.search(
@@ -7978,7 +8036,7 @@ def rename_files(
                                             )
                                         )
                         if (
-                            ((len(modified) == 2 and len(results) == 2))
+                            (len(modified) == 2 and len(results) == 2)
                             or (len(modified) == 1 and len(results) == 1 and no_keyword)
                         ) or (
                             file.multi_volume
@@ -8239,9 +8297,7 @@ def rename_files(
                                                     "\t\t\tSuccessfully renamed file.",
                                                     discord=False,
                                                 )
-                                                if (
-                                                    not mute_discord_rename_notifications
-                                                ):
+                                                if not mute_discord_rename_notifications:
                                                     embed = handle_fields(
                                                         DiscordEmbed(
                                                             title="Renamed File",
@@ -9367,7 +9423,6 @@ def delete_unacceptable_files():
                     if not os.path.isfile(file_path):
                         continue
 
-                    extension = get_file_extension(file)
                     for keyword in unacceptable_keywords:
                         unacceptable_keyword_search = re.search(
                             keyword, file, re.IGNORECASE
@@ -9694,16 +9749,13 @@ def search_bookwalker(
     bookwalker_light_novel_category = "&qcat=3"
     bookwalker_intll_manga_category = "&qcat=11"
 
-    done = False
     search_type = type
-    count = 0
 
     page_count = 1
     page_count_url = f"&page={page_count}"
 
     search = urllib.parse.quote(query)
     base_url = "https://global.bookwalker.jp/search/?word="
-    chapter_exclusion_url = "&np=1&qnot%5B%5D=Chapter&x=13&y=16"
     series_only = "&np=0"
     series_url = f"{base_url}{search}{series_only}"
     original_similarity_score = required_similarity_score
@@ -9810,9 +9862,6 @@ def search_bookwalker(
         else:
             total_pages_to_scrape = 1
 
-        list_area = soup.find(
-            "div", class_="book-list-area book-result-area book-result-area-1"
-        )
         list_area_ul = soup.find("ul", class_="o-tile-list")
 
         if list_area_ul is None:
@@ -10467,7 +10516,6 @@ def check_for_new_volumes_on_bookwalker():
 
         for dir_index, folder in enumerate(folders, start=1):
             root = folder["root"]
-            dirs = folder["dirs"]
             files = clean_and_sort(root, folder["files"], chapters=False, sort=True)[0]
 
             print(
@@ -11045,7 +11093,6 @@ def compare_images(imageA, imageB, silent=False):
 def prep_images_for_similarity(
     blank_image_path, internal_cover_data, both_cover_data=False, silent=False
 ):
-
     def resize_images(img1, img2, desired_width=400, desired_height=600):
         img1_resized = cv2.resize(
             img1, (desired_width, desired_height), interpolation=cv2.INTER_AREA
@@ -11941,7 +11988,6 @@ def main():
         and check_for_existing_series_toggle
         and moved_files
     ):
-
         if not komga_libraries:
             # Retrieve the Komga libraries
             komga_libraries = get_komga_libraries()
